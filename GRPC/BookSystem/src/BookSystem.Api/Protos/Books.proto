@@ -1,0 +1,36 @@
+﻿syntax = "proto3";
+option csharp_namespace = "BookContracts";
+package books;
+
+import "google/protobuf/timestamp.proto";
+
+message Book {
+  int64 book_id = 1;
+  string title = 2;
+  string author = 3;
+  string isbn = 4;
+  string publisher = 5;
+  int32 pages = 6;
+  string genre = 7;
+  string language = 8;
+  double price = 9;
+}
+
+message CreateRequest {
+  Book book = 1;
+}
+
+message CreateResponse {
+  int64 book_id = 1;
+}
+
+message GetAllRequest {}
+
+message GetAllResponse {
+  repeated Book items = 1;
+}
+
+service BookService {
+  rpc Add (CreateRequest) returns (CreateResponse);
+  rpc GetAll (GetAllRequest) returns (GetAllResponse);
+}

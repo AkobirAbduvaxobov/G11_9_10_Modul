@@ -18,7 +18,14 @@ public class StudentListenerService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var factory = new ConnectionFactory() { HostName = "localhost" }; // use localhost
+        var factory = new ConnectionFactory()
+        {
+            HostName = "localhost", // host.docker.internal Docker ichidan Windows RabbitMQ ga ulanish localhost orqali amalga oshiriladi
+            //Port = 5672,
+            UserName = "guest",
+            Password = "guest"
+        };
+
         var connection = await factory.CreateConnectionAsync();
         var channel = await connection.CreateChannelAsync();
 
@@ -34,25 +41,34 @@ public class StudentListenerService : BackgroundService
 
         consumer.ReceivedAsync += async (model, ea) =>
         {
-            var body = ea.Body.ToArray();
-            var message = Encoding.UTF8.GetString(body);
-            var student = JsonSerializer.Deserialize<Student>(message);
-
-            if (student != null)
+            var path = @"D:\log.txt";
+            try
             {
-                // Create scope here!
-                using (var scope = _serviceProvider.CreateScope())
+                var body = ea.Body.ToArray();
+                var message = Encoding.UTF8.GetString(body);
+                var student = JsonSerializer.Deserialize<Student>(message);
+
+                if (student != null)
                 {
+                    using var scope = _serviceProvider.CreateScope();
                     var studentService = scope.ServiceProvider.GetRequiredService<IStudentService>();
+                    File.AppendAllText(path, $"Info : {DateTime.Now}: {student.ToString}{Environment.NewLine}");
                     await studentService.AddAsync(student);
                 }
+                File.AppendAllText(path, $"Obj is null : {DateTime.Now}: {Environment.NewLine}");
             }
-        };
+            catch (Exception ex)
+            {
+                File.AppendAllText(path, $"Error : {DateTime.Now}: {ex.Message}{Environment.NewLine}");
+            };
 
-        await channel.BasicConsumeAsync(
-            queue: "student_queue",
-            autoAck: true,
-            consumer: consumer
-        );
+            await channel.BasicConsumeAsync(
+                queue: "student_queue",
+                autoAck: true,
+                consumer: consumer
+            );
+
+            await Task.Delay(Timeout.Infinite, stoppingToken);
+        };
     }
 }
